@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "playground-server-staging"
+  namespace: sre
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: playground
+      env: staging
+      service: server
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: playground
+        env: staging
+        service: server
+    spec:
+      terminationGracePeriodSeconds: 20
+      imagePullSecrets:
+        - name: registry-secret
+      containers:
+      - name: playground
+        imagePullPolicy: IfNotPresent
+        image: asia.gcr.io/cloudeng-poc-staging-cicd/yunus/server:v1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50Mi
+          limits:
+            cpu: 200m
+            memory: 100Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9999
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 9999
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name:  "playground-server-staging"
+  namespace: sre
+spec:
+  selector:
+    app:  playground
+    env: staging
+    service: server
+  type: NodePort
+  ports:
+  - name:  http
+    port:  9999
+# ---
+# apiVersion: extensions/v1beta1
+# kind: Ingress
+# metadata:
+#   name: test-ingress
+#   namespace: sre
+# spec:
+#   rules:
+#     - host: test.domain.com
+#       http:
+#         paths:
+#           - path: "/"
+#             backend:
+#               serviceName: playground-server-staging
+#               servicePort: 9999

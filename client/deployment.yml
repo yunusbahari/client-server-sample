@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "playground-client-staging"
+  namespace: sre
+spec:
+  selector:
+    matchLabels:
+      app: playground
+      env: staging
+      service: client
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: playground
+        env: staging
+        service: client
+    spec:
+      imagePullSecrets:
+        - name: registry-secret
+      nodeSelector:
+        env: staging-cicd
+      containers:
+      - name: playground
+        imagePullPolicy: Always
+        env:
+        - name: SLEEP_MS
+          value: "1000"
+        - name: HOST
+          value: "http://playground-server-staging:9999"
+        image: asia.gcr.io/cloudeng-poc-staging-cicd/yunus/client:v1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          limits:
+            cpu: 200m
+            memory: 500Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9998
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 9998
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+# ---
+# kind: Service
+# apiVersion: v1
+# metadata:
+#   name:  "playground-client-staging"
+#   namespace: sre
+# spec:
+#   selector:
+#     app:  playground
+#     env: staging
+#     service: client
+#   type: NodePort
+#   ports:
+#   - name:  http
+#     port:  9999
+# ---
+# apiVersion: extensions/v1beta1
+# kind: Ingress
+# metadata:
+#   name: test-ingress
+#   namespace: sre
+# spec:
+#   rules:
+#     - host: test.domain.com
+#       http:
+#         paths:
+#           - path: "/"
+#             backend:
+#               serviceName: playground-client-staging
+#               servicePort: 9998
